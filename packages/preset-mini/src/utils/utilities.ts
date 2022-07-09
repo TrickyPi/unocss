@@ -21,12 +21,33 @@ export const directionSize = (propertyPrefix: string) => ([_, direction, size]: 
 }
 
 /**
- * Obtain color from theme by camel-casing colors.
+ * Obtain color from colors config by camel-casing colors.
  */
-const getThemeColor = (theme: Theme, colors: string[]) =>
-  theme.colors?.[
+const getThemeColor = (colorsConfig: Theme['colors'] | string, colors: string[]) => {
+  if (typeof colorsConfig === 'string')
+    return
+  return colorsConfig?.[
     colors.join('-').replace(/(-[a-z])/g, n => n.slice(1).toUpperCase())
   ]
+}
+
+/**
+ * Obtain color from Themes.color by colors
+ */
+const getColor = (colorsConfig: Theme['colors'], colors: string[]) => {
+  let _colorsConfig: Theme['colors'] | string = colorsConfig
+  while (colors.length) {
+    const colorData = getThemeColor(_colorsConfig, colors)
+    if (colorData)
+      return colorData
+    const color = colors.shift()!
+    if (!_colorsConfig || typeof _colorsConfig === 'string')
+      return
+    if (!_colorsConfig[color])
+      return
+    _colorsConfig = _colorsConfig[color]
+  }
+}
 
 /**
  * Parse color string into {@link ParsedColorValue} (if possible). Color value will first be matched to theme object before parsing.
@@ -77,23 +98,24 @@ export const parseColor = (body: string, theme: Theme): ParsedColorValue | undef
   let no = 'DEFAULT'
   if (!color) {
     let colorData
-    const [scale] = colors.slice(-1)
-    if (scale.match(/^\d+$/)) {
-      no = scale
-      colorData = getThemeColor(theme, colors.slice(0, -1))
+    const [lastColor] = colors.slice(-1)
+    if (lastColor.match(/^\d+$/)) {
+      no = lastColor
+      colorData = getColor(theme.colors, colors.slice(0, -1))
+      if (colorData && typeof colorData !== 'string')
+        color = colorData[no]
     }
     else {
-      colorData = getThemeColor(theme, colors)
-      if (!colorData && colors.length <= 2) {
-        [, no = no] = colors
-        colorData = getThemeColor(theme, [name])
+      colorData = getThemeColor(theme.colors, colors)
+      if (typeof colorData === 'string') { color = colorData }
+      else if (colorData) { color = colorData[no] }
+      else {
+        no = lastColor
+        colorData = getColor(theme.colors, colors.slice(0, -1))
+        if (colorData && typeof colorData !== 'string')
+          color = colorData[no]
       }
     }
-
-    if (typeof colorData === 'string')
-      color = colorData
-    else if (no && colorData)
-      color = colorData[no]
   }
 
   return {

@@ -68,4 +68,28 @@ describe('preset-mini', () => {
     expect(css).toMatchInlineSnapshot('""')
     expect([...matched]).toEqual([])
   })
+
+  test('should works with nest theme config', async () => {
+    const uno = createGenerator({
+      presets: [
+        presetMini(),
+      ],
+      theme: {
+        colors: {
+          nested: {
+            yellow: 'yellow',
+            twice: {
+              green: 'green',
+            },
+          },
+        },
+      },
+    })
+
+    const { css } = await uno.generate([
+      'bg-nested-twice-green',
+    ].join(' '), { preflights: false })
+
+    expect(css).toContain('.bg-nested-twice-green{background-color:green;}')
+  })
 })
